@@ -266,6 +266,80 @@
         }
 
         /* ========================
+           VOISINS / GUERRE
+        ======================== */
+        .neighbor-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(20,12,2,0.5);
+            border: 1px solid #2e2008;
+            border-radius: 4px;
+            padding: 0.42rem 0.65rem;
+            margin-bottom: 0.38rem;
+        }
+        .neighbor-item.is-vassal { border-color: #6b5420; }
+
+        .nb-left .nb-name  { color: #e8d5a3; font-size: 0.84rem; font-weight: bold; }
+        .nb-left .nb-title { color: #5a4410; font-size: 0.7rem; }
+        .nb-right          { color: #e87050; font-size: 0.78rem; text-align: right; }
+        .nb-right.vassal-lbl { color: #c9a84c; font-size: 0.7rem; }
+
+        /* War target selection */
+        .war-target {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(20,10,2,0.7);
+            border: 1px solid #3a1808;
+            border-radius: 4px;
+            padding: 0.65rem 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+        .wt-name  { color: #e8d5a3; font-weight: bold; font-size: 0.9rem; }
+        .wt-stats { color: #7a5030; font-size: 0.74rem; margin-top: 0.15rem; }
+        .wt-chance { font-size: 0.72rem; margin-top: 0.1rem; }
+        .wt-chance.good { color: #78d890; }
+        .wt-chance.bad  { color: #e87050; }
+
+        .btn-assault {
+            background: rgba(180,50,20,0.25);
+            border: 1px solid #7a3018;
+            border-radius: 4px;
+            padding: 0.42rem 0.8rem;
+            color: #e87050;
+            font-family: Georgia, serif;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .btn-assault:hover { background: rgba(180,50,20,0.5); border-color: #e87050; }
+
+        .vassal-tag {
+            background: rgba(201,168,76,0.12);
+            border: 1px solid #5a4410;
+            border-radius: 3px;
+            padding: 0.3rem 0.7rem;
+            color: #c9a84c;
+            font-size: 0.75rem;
+        }
+
+        .btn-cancel-war {
+            width: 100%; margin-top: 0.5rem;
+            background: rgba(42,28,10,0.6);
+            border: 1px solid #3a2a10;
+            border-radius: 4px;
+            padding: 0.55rem;
+            color: #8a6f40;
+            font-family: Georgia, serif;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .btn-cancel-war:hover { border-color: #c9a84c; color: #e8d5a3; }
+
+        /* ========================
            RIGHT PANEL
         ======================== */
         .right-panel { display: flex; flex-direction: column; gap: 0.9rem; }
@@ -672,6 +746,12 @@
                 <div id="heirs-list"></div>
             </div>
 
+            <!-- Neighbors -->
+            <div class="panel-card">
+                <h3>🗡️ Seigneurs voisins</h3>
+                <div id="neighbors-list"></div>
+            </div>
+
             <!-- Passives (shown only when traits exist) -->
             <div class="panel-card" id="passive-card" style="display:none;">
                 <h3>✨ Bonus passifs</h3>
@@ -714,12 +794,24 @@
                         <span class="adesc">Transmettez un trait à votre héritier</span>
                         <span class="acost">Coût : 10 💰 → trait aléatoire</span>
                     </button>
-                    <button class="action-btn full-width" id="btn-tax" onclick="doAction('tax')">
+                    <button class="action-btn" id="btn-war" onclick="doAction('war')">
+                        <span class="atitle">⚔️ Déclarer la guerre</span>
+                        <span class="adesc">Choisissez un seigneur ennemi à attaquer</span>
+                        <span class="acost">Armée requise ≥ 10</span>
+                    </button>
+                    <button class="action-btn" id="btn-tax" onclick="doAction('tax')">
                         <span class="atitle">💰 Lever des impôts</span>
-                        <span class="adesc">La population grogne, mais les caisses se remplissent</span>
+                        <span class="adesc">La population grogne, caisses pleines</span>
                         <span class="acost">Gratuit → +40 💰, −5 👑</span>
                     </button>
                 </div>
+            </div>
+
+            <!-- War target panel -->
+            <div class="panel-card" id="war-panel" style="display:none;">
+                <h3 class="section-title">⚔️ Choisir votre cible</h3>
+                <div id="war-targets"></div>
+                <button class="btn-cancel-war" onclick="cancelWar()">↩ Annuler</button>
             </div>
 
             <!-- Event panel -->
@@ -804,6 +896,11 @@ const TRAITS = {
 };
 
 const TRAIT_KEYS = Object.keys(TRAITS);
+
+// Données pour les seigneurs adversaires
+const ENEMY_NAMES   = ['Adalbert','Brunhild','Dietrich','Ermengard','Friedrich','Gertrude','Hermann','Ingrid','Konrad','Liutgard','Ottokar','Radulf','Sigismund','Udeline','Werner'];
+const ENEMY_TITLES  = ['Seigneur','Baron','Comte','Vicomte','Chevalier'];
+const ENEMY_DOMAINS = ['Valdmont','Grimwald','Rivemort','Steinburg','Châteaufort','Brumehaven','Ferrock','Darkmoor','Kranzheim','Wolfseck'];
 
 // 10 événements aléatoires (4 automatiques, 6 à choix)
 const EVENTS = [
@@ -937,14 +1034,16 @@ function newGame(rulerName) {
         name: rulerName,
         gold: 100, army: 50, prestige: 10, piety: 10,
         heirs: [],
+        neighbors: [],
         turn: 1, maxTurns: 20,
-        allianceCd: 0,      // tours avant prochain alliance dispo
+        allianceCd: 0,
         log: [],
-        phase: 'action',    // 'action' | 'event'
+        phase: 'action',
         curEvent: null,
         usedNames: []
     };
     G.heirs.push({ name: pickName(G), age: rnd(1, 12), traits: [] });
+    G.neighbors = generateNeighbors();
 }
 
 // ========================
@@ -976,8 +1075,22 @@ function passives(){
 
 function hasSpecial(key){ return passives().special.includes(key); }
 
+function generateNeighbors(){
+    const usedN = [], usedD = [];
+    return Array.from({length:3}, () => {
+        const namePool   = ENEMY_NAMES.filter(n=>!usedN.includes(n));
+        const domainPool = ENEMY_DOMAINS.filter(d=>!usedD.includes(d));
+        const name   = namePool[Math.floor(Math.random()*namePool.length)];
+        const domain = domainPool[Math.floor(Math.random()*domainPool.length)];
+        const title  = ENEMY_TITLES[Math.floor(Math.random()*ENEMY_TITLES.length)];
+        usedN.push(name); usedD.push(domain);
+        return { name, title, domain, army: rnd(30, 75), gold: rnd(20, 55), vassal: false };
+    });
+}
+
 function calcScore(){
-    return Math.floor(G.prestige + G.piety + G.gold/10 + G.army/5 + G.heirs.length*15);
+    const vassals = G.neighbors ? G.neighbors.filter(n=>n.vassal).length : 0;
+    return Math.floor(G.prestige + G.piety + G.gold/10 + G.army/5 + G.heirs.length*15 + vassals*20);
 }
 
 function addLog(text){
@@ -1004,6 +1117,7 @@ function renderStats(prev){
     }
     document.getElementById('score-preview').textContent = calcScore();
     renderHeirs();
+    renderNeighbors();
     renderPassives();
     updateAllianceCd();
 }
@@ -1082,6 +1196,7 @@ function updateActionBtns(){
     document.getElementById('btn-raid').disabled    = G.gold < 20;
     document.getElementById('btn-fortify').disabled = G.gold < 30;
     document.getElementById('btn-educate').disabled = G.gold < 10 || G.heirs.length === 0;
+    document.getElementById('btn-war').disabled     = G.army < 10;
     updateAllianceCd();
 }
 
@@ -1136,13 +1251,24 @@ function beginTurn(){
     // Vieillissement des héritiers
     G.heirs.forEach(h => h.age++);
 
+    // Croissance des armées voisines (sauf vassaux)
+    G.neighbors.forEach(n => {
+        if(!n.vassal){ n.army += rnd(2,6); n.gold += rnd(1,4); }
+    });
+
+    // Revenus des vassaux (+8 or par vassal)
+    const vassalCount = G.neighbors.filter(n=>n.vassal).length;
+    const vassalGold  = vassalCount * 8;
+    G.gold += vassalGold;
+
     // Décrémenter cooldown alliance
     if(G.allianceCd > 0) G.allianceCd--;
 
     // Afficher bannière de revenus
     const parts = [`+${dGold} 💰`, `+${dPrestige} 👑`];
-    if(dArmy  >0) parts.push(`+${dArmy} ⚔️`);
-    if(dPiety >0) parts.push(`+${dPiety} ✝️`);
+    if(dArmy     >0) parts.push(`+${dArmy} ⚔️`);
+    if(dPiety    >0) parts.push(`+${dPiety} ✝️`);
+    if(vassalGold>0) parts.push(`+${vassalGold} 💰 (vassaux)`);
     const banner = document.getElementById('income-banner');
     banner.textContent = `Revenus de l'année : ${parts.join(', ')}`;
     banner.classList.add('show');
@@ -1218,6 +1344,11 @@ function doAction(type){
             logMsg = '💰 Impôts levés : +40 💰, −5 👑';
             break;
         }
+        case 'war':{
+            if(G.army < 10){ toast('Armée trop faible pour déclarer la guerre !'); return; }
+            showWarPanel();
+            return; // on attend la sélection de la cible
+        }
     }
 
     addLog(logMsg);
@@ -1283,6 +1414,104 @@ function resolveChoice(idx){
     document.getElementById('btn-next').classList.add('show');
 }
 
+// ========================
+// GUERRE
+// ========================
+
+function showWarPanel(){
+    document.getElementById('actions-panel').style.display = 'none';
+    document.getElementById('income-banner').classList.remove('show');
+    document.getElementById('phase-label').textContent = 'Guerre';
+
+    const wp = document.getElementById('war-panel');
+    wp.style.display = 'block';
+
+    document.getElementById('war-targets').innerHTML = G.neighbors.map((n,i) => {
+        const winChance = Math.round(G.army / (G.army + n.army) * 100);
+        const chanceClass = winChance >= 55 ? 'good' : 'bad';
+        if(n.vassal){
+            return `<div class="war-target">
+                <div><div class="wt-name">${n.title} ${n.name}</div>
+                <div class="wt-stats">de ${n.domain}</div></div>
+                <span class="vassal-tag">⚜ Vassal</span>
+            </div>`;
+        }
+        return `<div class="war-target">
+            <div>
+                <div class="wt-name">${n.title} ${n.name}</div>
+                <div class="wt-stats">de ${n.domain} — ⚔️ ${n.army} | 💰 ${n.gold}</div>
+                <div class="wt-chance ${chanceClass}">Chance de victoire : ~${winChance}%</div>
+            </div>
+            <button class="btn-assault" onclick="attackNeighbor(${i})">⚔️ Attaquer</button>
+        </div>`;
+    }).join('');
+}
+
+function cancelWar(){
+    document.getElementById('war-panel').style.display = 'none';
+    document.getElementById('actions-panel').style.display = 'block';
+    document.getElementById('phase-label').textContent = 'Action';
+    document.getElementById('income-banner').classList.add('show');
+}
+
+function attackNeighbor(idx){
+    const n = G.neighbors[idx];
+    if(n.vassal){ toast('Ce seigneur est votre vassal !'); return; }
+
+    document.getElementById('war-panel').style.display = 'none';
+
+    const prev = {...G, heirs:[...G.heirs], neighbors:[...G.neighbors]};
+
+    // Résolution : force avec aléatoire ±15%
+    const myPower    = G.army  * (0.85 + Math.random()*0.3);
+    const enemyPower = n.army  * (0.85 + Math.random()*0.3);
+    const victory    = myPower > enemyPower;
+
+    let logMsg = '';
+    if(victory){
+        const loot      = Math.floor(n.gold * 0.45);
+        const armyLoss  = rnd(5, 14);
+        const dmgToEnemy= rnd(18, 35);
+        G.gold         += loot;
+        G.prestige     += 15;
+        G.army          = Math.max(0, G.army - armyLoss);
+        n.army          = Math.max(0, n.army - dmgToEnemy);
+        n.gold          = Math.max(0, n.gold - loot);
+        if(n.army === 0){
+            n.vassal = true;
+            logMsg = `⚔️ Victoire écrasante sur ${n.name} ! Il devient votre vassal. +${loot}💰 +15👑`;
+        } else {
+            logMsg = `⚔️ Victoire contre ${n.title} ${n.name} ! +${loot}💰 +15👑 −${armyLoss}⚔️`;
+        }
+    } else {
+        const armyLoss = rnd(12, 28);
+        G.army         = Math.max(0, G.army - armyLoss);
+        G.prestige     = Math.max(0, G.prestige - 5);
+        n.army        += rnd(5, 12);
+        logMsg = `⚔️ Défaite contre ${n.title} ${n.name}… −${armyLoss}⚔️ −5👑`;
+    }
+
+    addLog(logMsg);
+    renderStats(prev);
+    setTimeout(triggerEvent, 250);
+}
+
+function renderNeighbors(){
+    const el = document.getElementById('neighbors-list');
+    if(!el || !G.neighbors) return;
+    el.innerHTML = G.neighbors.map(n => `
+        <div class="neighbor-item${n.vassal?' is-vassal':''}">
+            <div class="nb-left">
+                <div class="nb-name">${n.name}</div>
+                <div class="nb-title">${n.vassal ? '⚜ Vassal' : n.title + ' de ' + n.domain}</div>
+            </div>
+            <div class="nb-right${n.vassal?' vassal-lbl':''}">
+                ${n.vassal ? '+8💰/tour' : '⚔️ ' + n.army}
+            </div>
+        </div>
+    `).join('');
+}
+
 function nextTurn(){
     if(G.turn >= G.maxTurns){ endGame(); return; }
     G.turn++;
@@ -1308,13 +1537,15 @@ function endGame(){
     document.getElementById('rank-desc').textContent  = rank.desc;
 
     // Score détaillé
+    const vassalsFinal = G.neighbors.filter(n=>n.vassal).length;
     document.getElementById('score-grid').innerHTML = `
-        <div class="score-item"><span>👑 Prestige</span>  <span>${G.prestige}</span></div>
-        <div class="score-item"><span>✝️ Piété</span>     <span>${G.piety}</span></div>
-        <div class="score-item"><span>💰 Or ÷ 10</span>   <span>${Math.floor(G.gold/10)}</span></div>
-        <div class="score-item"><span>⚔️ Armée ÷ 5</span> <span>${Math.floor(G.army/5)}</span></div>
+        <div class="score-item"><span>👑 Prestige</span>    <span>${G.prestige}</span></div>
+        <div class="score-item"><span>✝️ Piété</span>       <span>${G.piety}</span></div>
+        <div class="score-item"><span>💰 Or ÷ 10</span>     <span>${Math.floor(G.gold/10)}</span></div>
+        <div class="score-item"><span>⚔️ Armée ÷ 5</span>   <span>${Math.floor(G.army/5)}</span></div>
         <div class="score-item"><span>👶 Héritiers × 15</span><span>${G.heirs.length*15}</span></div>
-        <div class="score-item" style="background:rgba(201,168,76,0.1);border:1px solid #6b5420;">
+        <div class="score-item"><span>🏰 Vassaux × 20</span> <span>${vassalsFinal*20}</span></div>
+        <div class="score-item" style="background:rgba(201,168,76,0.1);border:1px solid #6b5420;grid-column:span 2;">
             <span style="color:#c9a84c;">Total</span>
             <span style="color:#c9a84c;font-weight:bold;">${score}</span>
         </div>
