@@ -727,6 +727,25 @@
         }
 
         #flash.show { transform: translateX(0); }
+
+        /* ========================
+           MAP INTERACTIVE
+        ======================== */
+        .map-section { grid-column: 1 / -1; }
+
+        .terr-enemy  { fill: #160b02; stroke: #5a2808; stroke-width: 1.5; cursor: pointer; transition: fill 0.2s, stroke 0.2s; }
+        .terr-enemy:hover { fill: #2a1508; stroke: #c06030; }
+        .terr-vassal { fill: #1a1502; stroke: #c9a84c; stroke-width: 2; opacity: 0.8; cursor: default; }
+        .terr-player { fill: #1e1404; stroke: #c9a84c; stroke-width: 2.5; }
+
+        @keyframes battleFlash {
+            0%   { fill: #160b02; }
+            20%  { fill: #5a0c06; }
+            50%  { fill: #3a0806; }
+            80%  { fill: #4a0a06; }
+            100% { fill: #160b02; }
+        }
+        .battle-pulse { animation: battleFlash 0.85s ease; }
     </style>
 </head>
 <body>
@@ -780,6 +799,83 @@
 
     <div class="game-layout">
 
+        <!-- Full-width interactive map -->
+        <div class="map-section">
+          <div class="panel-card" style="padding:0.6rem 1rem 0.8rem;">
+            <h3>🗺️ Carte du Royaume — <span style="color:#7a6030;font-weight:normal;font-size:0.7rem;">Cliquez un territoire ennemi pour l'attaquer</span></h3>
+            <svg id="map-svg" viewBox="0 0 700 265" xmlns="http://www.w3.org/2000/svg"
+                 style="width:100%;height:auto;display:block;margin-top:0.4rem;">
+
+              <!-- Background -->
+              <rect width="700" height="265" fill="#0e0802"/>
+              <rect x="3" y="3" width="694" height="259" fill="none" stroke="#261406" stroke-width="1.5" rx="2"/>
+
+              <!-- Enemy territories (drawn first, under player) -->
+              <path id="map-t0" class="terr-enemy"
+                    d="M8,8 L240,8 L240,65 L220,128 L240,195 L240,258 L8,258 Z"
+                    onclick="mapAttack(0)"/>
+
+              <path id="map-t1" class="terr-enemy"
+                    d="M470,65 L692,8 L692,258 L470,258 L470,195 L490,128 Z"
+                    onclick="mapAttack(1)"/>
+
+              <path id="map-t2" class="terr-enemy"
+                    d="M240,195 L470,195 L470,258 L240,258 Z"
+                    onclick="mapAttack(2)"/>
+
+              <!-- Player territory (on top, gold border always visible) -->
+              <path id="map-tp" class="terr-player"
+                    d="M240,65 L470,65 L490,128 L470,195 L240,195 L220,128 Z"/>
+
+              <!-- Decorations: mountains (top-left inside N0) -->
+              <polygon points="30,22 48,52 12,52" fill="none" stroke="#1c1006" stroke-width="1.2"/>
+              <polygon points="50,18 70,52 30,52" fill="none" stroke="#1c1006" stroke-width="1.2"/>
+
+              <!-- Decorations: trees (bottom-left inside N0) -->
+              <text x="70"  y="228" font-size="14" fill="#162010" text-anchor="middle">🌲</text>
+              <text x="92"  y="242" font-size="11" fill="#162010" text-anchor="middle">🌲</text>
+              <text x="52"  y="244" font-size="10" fill="#122008" text-anchor="middle">🌲</text>
+
+              <!-- Decorations: compass (bottom-right inside N1) -->
+              <line x1="660" y1="228" x2="660" y2="256" stroke="#281808" stroke-width="1"/>
+              <line x1="647" y1="242" x2="673" y2="242" stroke="#281808" stroke-width="1"/>
+              <text x="660" y="226" font-size="7.5" fill="#281808" text-anchor="middle" font-family="serif">N</text>
+              <text x="660" y="258" font-size="7"   fill="#281808" text-anchor="middle" font-family="serif">S</text>
+              <text x="647" y="246" font-size="7"   fill="#281808" text-anchor="middle" font-family="serif">O</text>
+              <text x="675" y="246" font-size="7"   fill="#281808" text-anchor="middle" font-family="serif">E</text>
+
+              <!-- Map title -->
+              <text x="355" y="46" text-anchor="middle" font-size="10" fill="#4a3210"
+                    font-family="Georgia,serif" font-style="italic" letter-spacing="2">~ Carte du Royaume ~</text>
+
+              <!-- ── Player labels ── -->
+              <text x="355" y="105" text-anchor="middle" font-size="26">🏰</text>
+              <text id="map-dynasty-lbl" x="355" y="146" text-anchor="middle" font-size="8.5"
+                    fill="#c9a84c" font-family="Georgia,serif" letter-spacing="1.5">VOTRE DOMAINE</text>
+              <text id="map-ruler-lbl"   x="355" y="165" text-anchor="middle" font-size="7.5"
+                    fill="#7a5830" font-family="Georgia,serif" font-style="italic">—</text>
+
+              <!-- ── N0 labels (left region, centered ~x=108) ── -->
+              <text id="map-n0-domain" x="108" y="84"  text-anchor="middle" font-size="7.5" fill="#5a4010" font-family="Georgia,serif">—</text>
+              <text id="map-n0-name"   x="108" y="104" text-anchor="middle" font-size="11.5" fill="#a08050" font-family="Georgia,serif" font-weight="bold">—</text>
+              <text id="map-n0-army"   x="108" y="124" text-anchor="middle" font-size="11"  fill="#e87050" font-family="Georgia,serif">—</text>
+              <text id="map-n0-hint"   x="108" y="143" text-anchor="middle" font-size="7"   fill="#4a2010" font-family="Georgia,serif" font-style="italic">—</text>
+
+              <!-- ── N1 labels (right region, centered ~x=584) ── -->
+              <text id="map-n1-domain" x="584" y="84"  text-anchor="middle" font-size="7.5" fill="#5a4010" font-family="Georgia,serif">—</text>
+              <text id="map-n1-name"   x="584" y="104" text-anchor="middle" font-size="11.5" fill="#a08050" font-family="Georgia,serif" font-weight="bold">—</text>
+              <text id="map-n1-army"   x="584" y="124" text-anchor="middle" font-size="11"  fill="#e87050" font-family="Georgia,serif">—</text>
+              <text id="map-n1-hint"   x="584" y="143" text-anchor="middle" font-size="7"   fill="#4a2010" font-family="Georgia,serif" font-style="italic">—</text>
+
+              <!-- ── N2 labels (bottom strip, compact) ── -->
+              <text id="map-n2-domain" x="355" y="212" text-anchor="middle" font-size="7.5" fill="#5a4010" font-family="Georgia,serif">—</text>
+              <text id="map-n2-name"   x="305" y="232" text-anchor="middle" font-size="11"  fill="#a08050" font-family="Georgia,serif" font-weight="bold">—</text>
+              <text id="map-n2-army"   x="458" y="232" text-anchor="middle" font-size="11"  fill="#e87050" font-family="Georgia,serif">—</text>
+              <text id="map-n2-hint"   x="355" y="250" text-anchor="middle" font-size="7"   fill="#4a2010" font-family="Georgia,serif" font-style="italic">—</text>
+            </svg>
+          </div>
+        </div>
+
         <!-- LEFT: Stats -->
         <div class="stats-panel">
             <!-- Resources -->
@@ -814,12 +910,6 @@
             <div class="panel-card">
                 <h3>👶 Héritiers (<span id="heir-count">1</span>)</h3>
                 <div id="heirs-list"></div>
-            </div>
-
-            <!-- Neighbors -->
-            <div class="panel-card">
-                <h3>🗡️ Seigneurs voisins</h3>
-                <div id="neighbors-list"></div>
             </div>
 
             <!-- Passives (shown only when traits exist) -->
@@ -1205,7 +1295,7 @@ function renderStats(prev){
     }
     document.getElementById('score-preview').textContent = calcScore();
     renderHeirs();
-    renderNeighbors();
+    renderMap();
     renderPassives();
     updateAllianceCd();
 }
@@ -1607,6 +1697,53 @@ function attackNeighbor(idx){
     addLog(logMsg);
     renderStats(prev);
     setTimeout(triggerEvent, 250);
+}
+
+
+function renderMap(){
+    if(!G.neighbors) return;
+    const ids = ['map-t0','map-t1','map-t2'];
+    G.neighbors.forEach(function(n, i){
+        var path = document.getElementById(ids[i]);
+        if(path){
+            path.className.baseVal = n.vassal ? 'terr-vassal' : 'terr-enemy';
+            path.onclick = n.vassal ? null : function(){ mapAttack(i); };
+        }
+        var di = document.getElementById('map-n'+i+'-domain');
+        var ni = document.getElementById('map-n'+i+'-name');
+        var ai = document.getElementById('map-n'+i+'-army');
+        var hi = document.getElementById('map-n'+i+'-hint');
+        if(di) di.textContent = n.domain ? n.domain.toUpperCase() : '';
+        if(ni) ni.textContent = n.name || '';
+        if(ai){
+            if(n.vassal){
+                ai.textContent = '+8 or/tour';
+                ai.setAttribute('fill','#c9a84c');
+            } else {
+                ai.textContent = '⚔️ ' + (n.army || 0);
+                ai.setAttribute('fill','#e87050');
+            }
+        }
+        if(hi) hi.textContent = n.vassal ? '✶ Vassal' : (n.title || '');
+    });
+    var dl = document.getElementById('map-dynasty-lbl');
+    var rl = document.getElementById('map-ruler-lbl');
+    if(dl) dl.textContent = G.dynastyName ? 'Maison ' + G.dynastyName.toUpperCase() : 'VOTRE DOMAINE';
+    if(rl) rl.textContent = G.name ? G.name + '  •  An ' + G.turn : '';
+}
+
+function mapAttack(idx){
+    if(G.phase !== 'action'){ return; }
+    var n = G.neighbors[idx];
+    if(!n || n.vassal){ return; }
+    if(G.army < 10){ addLog('⚠️ Armée insuffisante pour attaquer.'); return; }
+    var ids = ['map-t0','map-t1','map-t2'];
+    var path = document.getElementById(ids[idx]);
+    if(path){
+        path.classList.add('battle-pulse');
+        setTimeout(function(){ path.classList.remove('battle-pulse'); }, 900);
+    }
+    setTimeout(function(){ attackNeighbor(idx); }, 620);
 }
 
 function renderNeighbors(){
