@@ -1,0 +1,20 @@
+{
+  "name": "Wall Street Survivor",
+  "short_name": "WS Survivor",
+  "description": "Jeu de bourse : investissez, empruntez, travaillez pour éviter la faillite !",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#06080f",
+  "theme_color": "#06080f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["games", "finance"],
+  "lang": "fr"
+}
