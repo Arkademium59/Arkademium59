@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chroniques Dynastiques</title>
+    <style>
+        /* ========================
+           RESET & BASE
+        ======================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: #1a1209;
+            color: #e8d5a3;
+            font-family: Georgia, 'Times New Roman', serif;
+            min-height: 100vh;
+        }
+
+        /* Subtle parchment texture via SVG pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c9a84c' fill-opacity='0.025'%3E%3Cpath d='M40 40m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M10 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M70 10m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M10 70m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M70 70m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0'/%3E%3C/g%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ========================
+           SCREENS
+        ======================== */
+        .screen { display: none; position: relative; z-index: 1; }
+        .screen.active { display: block; }
+
+        /* ========================
+           START SCREEN
+        ======================== */
+        #start-screen {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .title-ornament {
+            color: #c9a84c;
+            font-size: 1.8rem;
+            letter-spacing: 0.8rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.8;
+        }
+
+        h1.game-title {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            color: #c9a84c;
+            text-shadow: 0 0 30px rgba(201, 168, 76, 0.4), 0 2px 4px rgba(0,0,0,0.8);
+            margin-bottom: 0.3rem;
+            letter-spacing: 0.25rem;
+        }
+
+        .subtitle {
+            color: #8a6f40;
+            font-style: italic;
+            margin-bottom: 2.5rem;
+            font-size: 1rem;
+        }
+
+        .start-card {
+            background: linear-gradient(160deg, rgba(50,36,16,0.9), rgba(30,20,8,0.95));
+            border: 1px solid #6b5420;
+            border-top: 2px solid #c9a84c;
+            border-radius: 6px;
+            padding: 2.5rem;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 60px rgba(201,168,76,0.05);
+        }
+
+        .start-card label {
+            display: block;
+            color: #c9a84c;
+            margin-bottom: 0.6rem;
+            font-size: 0.8rem;
+            letter-spacing: 0.15rem;
+            text-transform: uppercase;
+        }
+
+        .start-card input[type="text"] {
+            width: 100%;
+            background: rgba(20,14,4,0.8);
+            border: 1px solid #4a3810;
+            border-radius: 4px;
+            padding: 0.8rem 1rem;
+            color: #e8d5a3;
+            font-family: Georgia, serif;
+            font-size: 1.05rem;
+            margin-bottom: 1.5rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .start-card input[type="text"]:focus {
+            border-color: #c9a84c;
+            box-shadow: 0 0 10px rgba(201,168,76,0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7a5c12, #c9a84c, #e8c860);
+            color: #1a0e00;
+            border: none;
+            padding: 0.9rem 2rem;
+            font-family: Georgia, serif;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 0.1rem;
+            width: 100%;
+            transition: all 0.25s;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #c9a84c, #f0d880);
+            box-shadow: 0 0 24px rgba(201,168,76,0.4);
+            transform: translateY(-1px);
+        }
+
+        .start-rules {
+            margin-top: 1.8rem;
+            text-align: left;
+            border-top: 1px solid #3a2a10;
+            padding-top: 1.2rem;
+        }
+
+        .start-rules li {
+            color: #8a6f40;
+            font-size: 0.82rem;
+            line-height: 1.6;
+            list-style: none;
+            padding-left: 1.3rem;
+            position: relative;
+            margin-bottom: 0.2rem;
+        }
+
+        .start-rules li::before {
+            content: '⚜';
+            position: absolute;
+            left: 0;
+            color: #6b5420;
+            font-size: 0.65rem;
+            top: 0.15rem;
+        }
+
+        /* ========================
+           GAME SCREEN
+        ======================== */
+        #game-screen { padding: 1rem 1.2rem; max-width: 1100px; margin: 0 auto; }
+
+        /* Header */
+        .game-header {
+            text-align: center;
+            padding: 0.8rem 0 1.2rem;
+            border-bottom: 1px solid #2e2008;
+            margin-bottom: 1.2rem;
+        }
+
+        .dynasty-name {
+            color: #c9a84c;
+            font-size: 1.5rem;
+            letter-spacing: 0.1rem;
+        }
+
+        .turn-indicator { color: #7a6030; font-size: 0.85rem; margin-top: 0.2rem; }
+
+        /* Turn progress bar */
+        .turn-bar { display: flex; justify-content: center; gap: 3px; margin-top: 0.7rem; }
+
+        .turn-pip {
+            width: 26px; height: 5px;
+            background: #2a1a06;
+            border: 1px solid #3a2a10;
+            border-radius: 3px;
+            transition: background 0.3s;
+        }
+
+        .turn-pip.done { background: #5a4410; }
+        .turn-pip.current { background: #c9a84c; box-shadow: 0 0 6px rgba(201,168,76,0.5); }
+
+        /* Two-column layout */
+        .game-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.2rem;
+            align-items: start;
+        }
+
+        /* ========================
+           LEFT: STATS PANEL
+        ======================== */
+        .stats-panel { display: flex; flex-direction: column; gap: 0.9rem; }
+
+        .panel-card {
+            background: linear-gradient(160deg, rgba(42,28,10,0.7), rgba(26,16,4,0.8));
+            border: 1px solid #2e2008;
+            border-radius: 5px;
+            padding: 0.9rem 1.1rem;
+        }
+
+        .panel-card h3 {
+            color: #c9a84c;
+            font-size: 0.72rem;
+            letter-spacing: 0.18rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #2e2008;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.28rem 0;
+        }
+
+        .stat-label { color: #8a6f40; font-size: 0.88rem; }
+        .stat-value { color: #e8d5a3; font-size: 0.98rem; font-weight: bold; }
+        .stat-value.gold    { color: #f5d060; }
+        .stat-value.army    { color: #e87050; }
+        .stat-value.prestige{ color: #78b8e8; }
+        .stat-value.piety   { color: #78d890; }
+
+        /* Score preview */
+        #score-preview {
+            font-size: 2.4rem;
+            color: #c9a84c;
+            font-weight: bold;
+            text-shadow: 0 0 16px rgba(201,168,76,0.4);
+        }
+
+        /* Heir cards */
+        .heir-item {
+            background: rgba(20,12,2,0.5);
+            border: 1px solid #2e2008;
+            border-radius: 4px;
+            padding: 0.5rem 0.7rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .heir-name { color: #e8d5a3; font-weight: bold; font-size: 0.88rem; }
+        .heir-age  { color: #6b5420; font-size: 0.75rem; }
+
+        .heir-traits { margin-top: 0.3rem; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+        .trait-badge {
+            background: rgba(201,168,76,0.1);
+            border: 1px solid #5a4410;
+            color: #c9a84c;
+            border-radius: 3px;
+            padding: 0.08rem 0.35rem;
+            font-size: 0.68rem;
+        }
+
+        /* ========================
+           RIGHT PANEL
+        ======================== */
+        .right-panel { display: flex; flex-direction: column; gap: 0.9rem; }
+
+        /* Income banner */
+        .income-banner {
+            background: rgba(42,28,10,0.5);
+            border: 1px solid #3a2a10;
+            border-left: 3px solid #c9a84c;
+            border-radius: 0 4px 4px 0;
+            padding: 0.55rem 1rem;
+            font-size: 0.82rem;
+            color: #8a6f40;
+            display: none;
+        }
+
+        .income-banner.show { display: block; }
+
+        /* Phase bar */
+        .phase-bar {
+            background: rgba(42,28,10,0.5);
+            border: 1px solid #2e2008;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+        }
+
+        .phase-label { color: #e8d5a3; letter-spacing: 0.05rem; }
+        .phase-label span { color: #c9a84c; }
+        .alliance-cd { color: #5a4410; font-size: 0.75rem; }
+
+        /* Action buttons grid */
+        .panel-card h3.section-title {
+            color: #c9a84c;
+            font-size: 0.72rem;
+            letter-spacing: 0.18rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid #2e2008;
+            padding-bottom: 0.5rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+        .action-btn {
+            background: rgba(26,14,2,0.7);
+            border: 1px solid #2e2008;
+            border-radius: 5px;
+            padding: 0.8rem 0.9rem;
+            color: #e8d5a3;
+            font-family: Georgia, serif;
+            font-size: 0.86rem;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .action-btn:hover:not(:disabled) {
+            border-color: #c9a84c;
+            background: rgba(80,58,16,0.35);
+            box-shadow: 0 0 12px rgba(201,168,76,0.15);
+        }
+
+        .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .action-btn .atitle { display: block; font-weight: bold; margin-bottom: 0.2rem; font-size: 0.88rem; }
+        .action-btn .adesc  { font-size: 0.73rem; color: #7a6030; line-height: 1.3; }
+        .action-btn .acost  { font-size: 0.73rem; color: #a89040; margin-top: 0.25rem; }
+
+        .action-btn .cd-badge {
+            position: absolute;
+            top: 0.35rem; right: 0.5rem;
+            font-size: 0.62rem;
+            color: #5a4410;
+            letter-spacing: 0;
+        }
+
+        .action-btn.full-width { grid-column: span 2; }
+
+        /* Event card */
+        .event-card {
+            background: linear-gradient(160deg, rgba(46,30,10,0.9), rgba(26,16,4,0.95));
+            border: 1px solid #c9a84c;
+            border-radius: 5px;
+            padding: 1.1rem 1.2rem;
+            box-shadow: 0 0 24px rgba(201,168,76,0.08);
+            display: none;
+        }
+
+        .event-card.show { display: block; }
+
+        .event-card .ev-header {
+            color: #c9a84c;
+            font-size: 0.7rem;
+            letter-spacing: 0.18rem;
+            text-transform: uppercase;
+            margin-bottom: 0.7rem;
+        }
+
+        .ev-title { font-size: 1.05rem; color: #e8d5a3; font-style: italic; margin-bottom: 0.4rem; }
+        .ev-desc  { color: #8a6f40; font-size: 0.85rem; line-height: 1.55; margin-bottom: 0.9rem; }
+
+        .ev-auto-result {
+            background: rgba(20,12,2,0.6);
+            border-left: 3px solid #6b5420;
+            border-radius: 0 4px 4px 0;
+            padding: 0.6rem 0.9rem;
+            font-size: 0.87rem;
+            color: #c9a84c;
+            margin-bottom: 0.8rem;
+            display: none;
+        }
+
+        .ev-auto-result.show { display: block; }
+
+        .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+
+        .choice-btn {
+            background: rgba(20,12,2,0.7);
+            border: 1px solid #4a3810;
+            border-radius: 4px;
+            padding: 0.7rem 0.8rem;
+            color: #e8d5a3;
+            font-family: Georgia, serif;
+            font-size: 0.84rem;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .choice-btn:hover:not(:disabled) {
+            border-color: #c9a84c;
+            background: rgba(80,58,16,0.3);
+        }
+
+        .choice-btn:disabled { opacity: 0.4; cursor: default; }
+
+        .choice-btn .ctitle { display: block; font-weight: bold; margin-bottom: 0.2rem; }
+        .choice-btn .ceffect { font-size: 0.72rem; color: #7a6030; }
+
+        .btn-next {
+            background: linear-gradient(135deg, #7a5c12, #c9a84c);
+            color: #1a0e00;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-family: Georgia, serif;
+            font-size: 0.92rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 0.8rem;
+            letter-spacing: 0.08rem;
+            transition: all 0.2s;
+            display: none;
+        }
+
+        .btn-next.show { display: block; }
+        .btn-next:hover { background: linear-gradient(135deg, #c9a84c, #f0d880); box-shadow: 0 0 16px rgba(201,168,76,0.35); }
+
+        /* ========================
+           EVENT LOG (bottom)
+        ======================== */
+        .log-section { grid-column: 1 / -1; }
+
+        .log-section h3 {
+            color: #6b5420;
+            font-size: 0.72rem;
+            letter-spacing: 0.18rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .event-log {
+            background: rgba(18,10,2,0.7);
+            border: 1px solid #2e2008;
+            border-radius: 5px;
+            padding: 0.7rem 0.9rem;
+            height: 108px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .event-log::-webkit-scrollbar { width: 5px; }
+        .event-log::-webkit-scrollbar-track { background: #1a1005; }
+        .event-log::-webkit-scrollbar-thumb { background: #3a2a10; border-radius: 3px; }
+
+        .log-entry {
+            font-size: 0.78rem;
+            color: #7a6030;
+            padding: 0.18rem 0;
+            border-bottom: 1px solid #231608;
+            flex-shrink: 0;
+        }
+
+        .log-entry:last-child { border-bottom: none; }
+        .log-entry .lt { color: #4a3410; margin-right: 0.4rem; }
+        .log-entry .ltext { color: #9a8050; }
+
+        /* ========================
+           END SCREEN
+        ======================== */
+        #end-screen {
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .end-card {
+            background: linear-gradient(160deg, rgba(50,34,12,0.95), rgba(26,14,4,0.98));
+            border: 1px solid #6b5420;
+            border-top: 2px solid #c9a84c;
+            border-radius: 6px;
+            padding: 2.5rem 2.8rem;
+            max-width: 580px;
+            width: 100%;
+            box-shadow: 0 8px 50px rgba(0,0,0,0.7), 0 0 80px rgba(201,168,76,0.08);
+        }
+
+        .end-orn { color: #c9a84c; font-size: 2.5rem; margin-bottom: 0.8rem; }
+        .end-main-title { color: #c9a84c; font-size: 1.8rem; letter-spacing: 0.25rem; }
+        .end-ruler { color: #a08050; font-style: italic; margin: 0.3rem 0 1.8rem; }
+
+        .score-block {
+            background: rgba(18,10,2,0.6);
+            border: 1px solid #4a3410;
+            border-radius: 5px;
+            padding: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .score-lbl { color: #7a6030; font-size: 0.78rem; letter-spacing: 0.1rem; text-transform: uppercase; }
+        .score-num { font-size: 3.8rem; color: #c9a84c; font-weight: bold; text-shadow: 0 0 20px rgba(201,168,76,0.45); line-height: 1; margin: 0.3rem 0; }
+
+        .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; margin-top: 1rem; }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(26,14,4,0.5);
+            padding: 0.3rem 0.6rem;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            color: #7a6030;
+        }
+
+        .score-item span:last-child { color: #c9a84c; }
+
+        .rank-title-el { font-size: 1.7rem; color: #e8d5a3; margin-bottom: 0.3rem; }
+        .rank-desc-el  { color: #7a6030; font-style: italic; font-size: 0.88rem; margin-bottom: 1.8rem; }
+
+        .end-log h4 {
+            color: #6b5420;
+            font-size: 0.72rem;
+            letter-spacing: 0.15rem;
+            text-transform: uppercase;
+            margin-bottom: 0.7rem;
+            text-align: left;
+        }
+
+        .end-log-ul { list-style: none; text-align: left; }
+
+        .end-log-ul li {
+            color: #7a6030;
+            font-size: 0.82rem;
+            padding: 0.3rem 0 0.3rem 1.1rem;
+            border-bottom: 1px solid #231608;
+            position: relative;
+        }
+
+        .end-log-ul li::before { content: '⚜'; position: absolute; left: 0; color: #4a3410; font-size: 0.62rem; top: 0.4rem; }
+        .end-log-ul li span { color: #4a3410; }
+
+        .btn-restart {
+            margin-top: 2rem;
+            background: linear-gradient(135deg, #7a5c12, #c9a84c);
+            color: #1a0e00;
+            border: none;
+            padding: 0.85rem 2.5rem;
+            font-family: Georgia, serif;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 0.1rem;
+            transition: all 0.25s;
+        }
+
+        .btn-restart:hover {
+            background: linear-gradient(135deg, #c9a84c, #f0d880);
+            box-shadow: 0 0 20px rgba(201,168,76,0.4);
+            transform: translateY(-1px);
+        }
+
+        /* ========================
+           STAT ANIMATION
+        ======================== */
+        @keyframes statUp   { 0%,100% { opacity:1; } 40% { color: #78e850; } }
+        @keyframes statDown { 0%,100% { opacity:1; } 40% { color: #e85040; } }
+        .su { animation: statUp   0.8s ease; }
+        .sd { animation: statDown 0.8s ease; }
+
+        /* ========================
+           FLASH TOAST
+        ======================== */
+        #flash {
+            position: fixed;
+            top: 1rem; right: 1rem;
+            background: rgba(46,30,10,0.97);
+            border: 1px solid #c9a84c;
+            border-radius: 4px;
+            padding: 0.65rem 1.1rem;
+            color: #e8d5a3;
+            font-size: 0.85rem;
+            z-index: 999;
+            transform: translateX(calc(100% + 2rem));
+            transition: transform 0.28s;
+            pointer-events: none;
+        }
+
+        #flash.show { transform: translateX(0); }
+    </style>
+</head>
+<body>
+
+<!-- ========================
+     START SCREEN
+======================== -->
+<div id="start-screen" class="screen active">
+    <div class="title-ornament">⚜ ⚜ ⚜</div>
+    <h1 class="game-title">CHRONIQUES DYNASTIQUES</h1>
+    <p class="subtitle">Forgez votre légende sur vingt ans de règne</p>
+
+    <div class="start-card">
+        <label for="ruler-name">Votre nom, Seigneur :</label>
+        <input type="text" id="ruler-name" placeholder="ex : Aldric le Vaillant" maxlength="28"
+               onkeydown="if(event.key==='Enter') startGame()">
+        <button class="btn-primary" onclick="startGame()">⚔️ &nbsp;Commencer le règne</button>
+        <ul class="start-rules">
+            <li>Gérez votre domaine pendant 20 tours (années)</li>
+            <li>Chaque tour : revenus automatiques, puis une action au choix</li>
+            <li>Un événement aléatoire clôt chaque année</li>
+            <li>Éduquez vos héritiers pour débloquer des bonus passifs</li>
+            <li>Maximisez votre Puissance Dynastique avant la fin</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ========================
+     GAME SCREEN
+======================== -->
+<div id="game-screen" class="screen">
+    <!-- Header -->
+    <div class="game-header">
+        <div class="dynasty-name" id="header-name">La Maison des ???</div>
+        <div class="turn-indicator" id="turn-indicator">Année 1 / 20</div>
+        <div class="turn-bar" id="turn-bar"></div>
+    </div>
+
+    <div class="game-layout">
+
+        <!-- LEFT: Stats -->
+        <div class="stats-panel">
+            <!-- Resources -->
+            <div class="panel-card">
+                <h3>⚜ Ressources</h3>
+                <div class="stat-row">
+                    <span class="stat-label">💰 Or</span>
+                    <span class="stat-value gold" id="s-gold">100</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">⚔️ Armée</span>
+                    <span class="stat-value army" id="s-army">50</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">👑 Prestige</span>
+                    <span class="stat-value prestige" id="s-prestige">10</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">✝️ Piété</span>
+                    <span class="stat-value piety" id="s-piety">10</span>
+                </div>
+            </div>
+
+            <!-- Score preview -->
+            <div class="panel-card" style="text-align:center; padding: 0.9rem 1.1rem 1rem;">
+                <div style="color:#6b5420; font-size:0.7rem; letter-spacing:0.15rem; text-transform:uppercase; margin-bottom:0.35rem;">⭐ Puissance Dynastique</div>
+                <div id="score-preview" style="font-size:2.3rem; color:#c9a84c; font-weight:bold; text-shadow:0 0 14px rgba(201,168,76,0.4);">—</div>
+                <div style="color:#5a4410; font-size:0.7rem; margin-top:0.15rem;">Score actuel</div>
+            </div>
+
+            <!-- Heirs -->
+            <div class="panel-card">
+                <h3>👶 Héritiers (<span id="heir-count">1</span>)</h3>
+                <div id="heirs-list"></div>
+            </div>
+
+            <!-- Passives (shown only when traits exist) -->
+            <div class="panel-card" id="passive-card" style="display:none;">
+                <h3>✨ Bonus passifs</h3>
+                <div id="passives-list" style="font-size:0.78rem; color:#8a6f40; line-height:1.7;"></div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Actions + Events + Log -->
+        <div class="right-panel">
+            <!-- Income banner -->
+            <div class="income-banner" id="income-banner"></div>
+
+            <!-- Phase indicator -->
+            <div class="phase-bar">
+                <div class="phase-label">Phase : <span id="phase-label">Action</span></div>
+                <div class="alliance-cd" id="alliance-cd"></div>
+            </div>
+
+            <!-- Actions panel -->
+            <div class="panel-card" id="actions-panel">
+                <h3 class="section-title">⚙️ Votre action ce tour</h3>
+                <div class="actions-grid">
+                    <button class="action-btn" id="btn-raid" onclick="doAction('raid')">
+                        <span class="atitle">⚔️ Raid voisin</span>
+                        <span class="adesc">Pillez les terres voisines pour or et gloire</span>
+                        <span class="acost">Coût : 20 💰 → or aléatoire + 5 👑</span>
+                    </button>
+                    <button class="action-btn" id="btn-fortify" onclick="doAction('fortify')">
+                        <span class="atitle">🏰 Fortifier</span>
+                        <span class="adesc">Renforcez vos défenses militaires</span>
+                        <span class="acost">Coût : 30 💰 → +20 ⚔️ +3 👑</span>
+                    </button>
+                    <button class="action-btn" id="btn-alliance" onclick="doAction('alliance')">
+                        <span class="atitle">🤝 Alliance</span>
+                        <span class="adesc">Liens diplomatiques (recharge 3 tours)</span>
+                        <span class="acost">Gratuit → +15 👑 +5 ✝️</span>
+                    </button>
+                    <button class="action-btn" id="btn-educate" onclick="doAction('educate')">
+                        <span class="atitle">📖 Éduquer héritier</span>
+                        <span class="adesc">Transmettez un trait à votre héritier</span>
+                        <span class="acost">Coût : 10 💰 → trait aléatoire</span>
+                    </button>
+                    <button class="action-btn full-width" id="btn-tax" onclick="doAction('tax')">
+                        <span class="atitle">💰 Lever des impôts</span>
+                        <span class="adesc">La population grogne, mais les caisses se remplissent</span>
+                        <span class="acost">Gratuit → +40 💰, −5 👑</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Event panel -->
+            <div class="event-card" id="event-card">
+                <div class="ev-header">📜 Événement de l'année</div>
+                <div class="ev-title" id="ev-title"></div>
+                <div class="ev-desc"  id="ev-desc"></div>
+                <div class="ev-auto-result" id="ev-auto"></div>
+                <div class="choices-grid" id="ev-choices"></div>
+                <button class="btn-next" id="btn-next" onclick="nextTurn()">
+                    ▶ &nbsp;Passer à l'année suivante
+                </button>
+            </div>
+
+            <!-- Event log (spans full width) -->
+            <div class="log-section">
+                <h3>📜 Journal du règne</h3>
+                <div class="event-log" id="event-log">
+                    <div class="log-entry"><span class="ltext" style="color:#4a3410; font-style:italic;">Le règne commence…</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================
+     END SCREEN
+======================== -->
+<div id="end-screen" class="screen">
+    <div class="end-card">
+        <div class="end-orn">⚜</div>
+        <div class="end-main-title">FIN DU RÈGNE</div>
+        <div class="end-ruler" id="end-ruler"></div>
+
+        <div class="score-block">
+            <div class="score-lbl">Puissance Dynastique Finale</div>
+            <div class="score-num" id="end-score">0</div>
+            <div class="score-grid" id="score-grid"></div>
+        </div>
+
+        <div class="rank-title-el" id="rank-title"></div>
+        <div class="rank-desc-el"  id="rank-desc"></div>
+
+        <div class="end-log">
+            <h4>Derniers événements du règne :</h4>
+            <ul class="end-log-ul" id="end-log-ul"></ul>
+        </div>
+
+        <button class="btn-restart" onclick="restartGame()">↺ &nbsp;Nouveau règne</button>
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div id="flash"></div>
+
+<!-- ========================
+     JAVASCRIPT
+======================== -->
+<script>
+// ============================================================
+//  CHRONIQUES DYNASTIQUES — Jeu de stratégie dynastique
+//  Fichier unique, vanilla JS, aucune dépendance externe
+// ============================================================
+
+// ========================
+// DONNÉES STATIQUES
+// ========================
+
+const NAMES = [
+    'Aldric','Béatrix','Conrad','Hildegarde','Siegfried','Mathilde','Ragnard',
+    'Élise','Godefroi','Ysabeau','Thibault','Aliénor','Renaud','Clémence',
+    'Gautier','Adèle','Bertrand','Gisèle','Arnaud','Helvis','Lothaire','Ermengarde'
+];
+
+const TRAITS = {
+    brave:         { label:'Brave',         icon:'⚔️', desc:'+2 ⚔️/tour',       stat:'army',     val:2 },
+    diplomate:     { label:'Diplomate',     icon:'🤝', desc:'+2 👑/tour',        stat:'prestige', val:2 },
+    avare:         { label:'Avare',         icon:'💰', desc:'+2 💰/tour',        stat:'gold',     val:2 },
+    pieux:         { label:'Pieux',         icon:'✝️', desc:'+2 ✝️/tour',        stat:'piety',    val:2 },
+    stratege:      { label:'Stratège',      icon:'🗺️', desc:'Raids +20% or',     special:'raid_bonus'     },
+    charismatique: { label:'Charismatique', icon:'✨', desc:'Alliances +10 👑',  special:'alliance_bonus' }
+};
+
+const TRAIT_KEYS = Object.keys(TRAITS);
+
+// 10 événements aléatoires (4 automatiques, 6 à choix)
+const EVENTS = [
+    {
+        id:'epidemic', title:'Une épidémie frappe vos terres',
+        desc:"Une terrible maladie se répand parmi votre peuple. Des centaines de serfs sont touchés, vos campements militaires aussi.",
+        auto:false,
+        choices:[
+            { label:'🏥 Soigner',  effect:'−20 💰, −5 ⚔️',
+              apply(g){ g.gold-=20; g.army=Math.max(0,g.army-5); return 'Vous financez les soins. Les malades récupèrent lentement.'; }},
+            { label:'🙈 Ignorer',  effect:'−10 ✝️, risque héritier',
+              apply(g){
+                  g.piety=Math.max(0,g.piety-10);
+                  if(g.heirs.length>0 && Math.random()<0.45){
+                      const idx=Math.floor(Math.random()*g.heirs.length);
+                      const dead=g.heirs.splice(idx,1)[0];
+                      return `Vous abandonnez votre peuple. L'épidémie emporte ${dead.name}…`;
+                  }
+                  return "Vous laissez le destin décider. La maladie finit par s'estomper.";
+              }}
+        ]
+    },
+    {
+        id:'merchant', title:'Un riche marchand propose un contrat',
+        desc:"Un négociant venu de loin vous offre un accord lucratif. Accepter pourrait ternir votre réputation de noblesse.",
+        auto:false,
+        choices:[
+            { label:'✅ Accepter', effect:'+30 💰',
+              apply(g){ g.gold+=30; return 'Le contrat est signé. Les coffres se remplissent.'; }},
+            { label:'🚫 Refuser',  effect:'+5 👑',
+              apply(g){ g.prestige+=5; return "Vous rejetez l'argent facile. Votre noblesse est admirée."; }}
+        ]
+    },
+    {
+        id:'insult', title:'Votre voisin vous insulte publiquement',
+        desc:"Le seigneur voisin a tenu des propos méprisants à votre égard lors d'un banquet. Votre honneur est en jeu.",
+        auto:false,
+        choices:[
+            { label:'⚔️ Déclarer la guerre', effect:'Victoire ou défaite…',
+              apply(g){
+                  if(Math.random()<0.55){ g.army+=15; g.prestige+=10; return 'Votre armée remporte la victoire ! Nouvelles recrues et prestige accru.'; }
+                  else { g.army=Math.max(0,g.army-10); g.prestige=Math.max(0,g.prestige-5); return 'La campagne tourne mal. Vos hommes battent en retraite.'; }
+              }},
+            { label:'🤐 Tolérer', effect:'−5 👑',
+              apply(g){ g.prestige=Math.max(0,g.prestige-5); return "Vous avalez l'affront. Certains vassaux murmurent…"; }}
+        ]
+    },
+    {
+        id:'feast', title:'Une fête populaire est organisée',
+        desc:'Les villageois souhaitent célébrer une grande fête en votre honneur. Votre participation est attendue.',
+        auto:false,
+        choices:[
+            { label:'🍷 Financer', effect:'−25 💰, +10 👑, +5 ✝️',
+              apply(g){ g.gold-=25; g.prestige+=10; g.piety+=5; return 'La fête est somptueuse ! Votre générosité est célébrée par tous.'; }},
+            { label:'❌ Annuler',  effect:'Rien',
+              apply(g){ return "Vous déclinez. La vie au château continue son cours."; }}
+        ]
+    },
+    {
+        id:'treason', title:'Trahison ! Un vassal se rebelle',
+        desc:'Un de vos vassaux a secrètement comploté contre vous et lève son propre étendard. Votre autorité est bafouée.',
+        auto:false,
+        choices:[
+            { label:'⚖️ Punir sévèrement', effect:'−15 ⚔️, +8 👑',
+              apply(g){ g.army=Math.max(0,g.army-15); g.prestige+=8; return 'Vous écrasez la rébellion. Votre autorité est rétablie, mais à un coût.'; }},
+            { label:'🕊️ Pardonner', effect:'−5 ⚔️, +10 ✝️',
+              apply(g){ g.army=Math.max(0,g.army-5); g.piety+=10; return 'Votre clémence étonne. Le vassal honteux renouvelle son serment.'; }}
+        ]
+    },
+    {
+        id:'pilgrim', title:'Un pèlerin porteur de reliques arrive',
+        desc:"Un saint homme traverse vos terres, portant des reliques d'une valeur spirituelle inestimable.",
+        auto:false,
+        choices:[
+            { label:"🙏 Offrir l'asile", effect:'+15 ✝️, +5 👑',
+              apply(g){ g.piety+=15; g.prestige+=5; return 'Les reliques sont abritées. La bénédiction divine sourit à vos terres.'; }},
+            { label:'💎 Saisir les reliques', effect:'+20 💰, −20 ✝️',
+              apply(g){ g.gold+=20; g.piety=Math.max(0,g.piety-20); return 'Vous saisissez les reliques et les revendez. Votre âme en paiera le prix.'; }}
+        ]
+    },
+    {
+        id:'birth', title:'Un enfant naît dans votre demeure',
+        desc:'Une naissance vient réjouir votre foyer ! La lignée dynastique se perpétue.',
+        auto:true,
+        apply(g){
+            const name=pickName(g); const age=rnd(1,4);
+            g.heirs.push({name,age,traits:[]}); g.piety+=3;
+            return `${name} voit le jour ! Héritier ajouté. +3 ✝️`;
+        }
+    },
+    {
+        id:'harvest', title:'Une récolte exceptionnelle cette année',
+        desc:'Les champs débordent de blé et les caves regorgent de vin. La prospérité sourit à votre domaine.',
+        auto:true,
+        apply(g){ g.gold+=25; g.prestige+=2; return '+25 💰, +2 👑'; }
+    },
+    {
+        id:'knight', title:'Un chevalier loyal vous rejoint',
+        desc:'Un noble guerrier, réputé pour sa bravoure, choisit de servir sous votre bannière.',
+        auto:true,
+        apply(g){ g.army+=15; g.prestige+=5; return '+15 ⚔️, +5 👑'; }
+    },
+    {
+        id:'spy', title:'Un espion ennemi est découvert',
+        desc:"Vos gardes ont capturé un espion infiltré dans votre château. Il détient des informations précieuses.",
+        auto:false,
+        choices:[
+            { label:'🗣️ Interroger', effect:'+10 ⚔️, −5 ✝️',
+              apply(g){ g.army+=10; g.piety=Math.max(0,g.piety-5); return "Sous la pression, l'espion révèle les plans ennemis. Votre armée s'adapte."; }},
+            { label:"🤝 Retourner l'espion", effect:'+15 👑',
+              apply(g){ g.prestige+=15; return "L'espion convaincu travaille désormais pour vous. Votre intelligence progresse."; }}
+        ]
+    }
+];
+
+const RANKS = [
+    { min:200, title:'Roi Légendaire',    desc:'Votre nom traversera les siècles. Les bardes chanteront vos exploits jusqu\'à la fin des temps.' },
+    { min:130, title:'Grand Duc',         desc:'Votre domaine prospère, votre lignée honorée. Vous mourrez entouré de respect et d\'héritiers.' },
+    { min: 70, title:'Seigneur Respecté', desc:'Un règne honnête, des terres stables. Votre héritier aura de bonnes fondations sur lesquelles bâtir.' },
+    { min:  0, title:'Vassal Oublié',     desc:'Votre règne fut médiocre. Votre nom sera oublié avant même votre enterrement.' }
+];
+
+// ========================
+// ÉTAT DU JEU
+// ========================
+
+let G = {}; // game state global
+
+function newGame(rulerName) {
+    G = {
+        name: rulerName,
+        gold: 100, army: 50, prestige: 10, piety: 10,
+        heirs: [],
+        turn: 1, maxTurns: 20,
+        allianceCd: 0,      // tours avant prochain alliance dispo
+        log: [],
+        phase: 'action',    // 'action' | 'event'
+        curEvent: null,
+        usedNames: []
+    };
+    G.heirs.push({ name: pickName(G), age: rnd(1, 12), traits: [] });
+}
+
+// ========================
+// UTILITAIRES
+// ========================
+
+function rnd(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+function pickName(g){
+    const avail = NAMES.filter(n => !g.usedNames.includes(n));
+    const pool  = avail.length ? avail : NAMES;
+    const n     = pool[Math.floor(Math.random()*pool.length)];
+    g.usedNames.push(n);
+    return n;
+}
+
+function passives(){
+    const bonus   = {gold:0,army:0,prestige:0,piety:0};
+    const special = [];
+    for(const h of G.heirs){
+        for(const tk of h.traits){
+            const t = TRAITS[tk];
+            if(t.stat)    bonus[t.stat] += t.val;
+            if(t.special) special.push(t.special);
+        }
+    }
+    return {bonus, special};
+}
+
+function hasSpecial(key){ return passives().special.includes(key); }
+
+function calcScore(){
+    return Math.floor(G.prestige + G.piety + G.gold/10 + G.army/5 + G.heirs.length*15);
+}
+
+function addLog(text){
+    G.log.unshift({turn:G.turn, text});
+    if(G.log.length > 20) G.log.pop();
+    renderLog();
+}
+
+// ========================
+// RENDU UI
+// ========================
+
+function renderStats(prev){
+    const fields = ['gold','army','prestige','piety'];
+    for(const f of fields){
+        const el = document.getElementById('s-'+f);
+        if(!el) continue;
+        el.textContent = G[f];
+        if(prev && G[f] !== prev[f]){
+            el.classList.remove('su','sd');
+            void el.offsetWidth;
+            el.classList.add(G[f] > prev[f] ? 'su' : 'sd');
+        }
+    }
+    document.getElementById('score-preview').textContent = calcScore();
+    renderHeirs();
+    renderPassives();
+    updateAllianceCd();
+}
+
+function renderHeirs(){
+    document.getElementById('heir-count').textContent = G.heirs.length;
+    const el = document.getElementById('heirs-list');
+    if(!G.heirs.length){
+        el.innerHTML = '<div style="color:#4a3410;font-size:0.78rem;font-style:italic;">Aucun héritier vivant…</div>';
+        return;
+    }
+    el.innerHTML = G.heirs.map(h=>`
+        <div class="heir-item">
+            <div class="heir-name">${h.name}</div>
+            <div class="heir-age">${h.age} ans</div>
+            ${h.traits.length ? `<div class="heir-traits">${h.traits.map(t=>`<span class="trait-badge">${TRAITS[t].icon} ${TRAITS[t].label}</span>`).join('')}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function renderPassives(){
+    const {bonus, special} = passives();
+    const lines = [];
+    if(bonus.gold    >0) lines.push(`+${bonus.gold} 💰/tour`);
+    if(bonus.army    >0) lines.push(`+${bonus.army} ⚔️/tour`);
+    if(bonus.prestige>0) lines.push(`+${bonus.prestige} 👑/tour`);
+    if(bonus.piety   >0) lines.push(`+${bonus.piety} ✝️/tour`);
+    if(special.includes('raid_bonus'))     lines.push('Raids +20% or (Stratège)');
+    if(special.includes('alliance_bonus')) lines.push('Alliances +10 👑 (Charismatique)');
+    const card = document.getElementById('passive-card');
+    if(lines.length){
+        card.style.display = 'block';
+        document.getElementById('passives-list').innerHTML = lines.map(l=>`<div>⚜ ${l}</div>`).join('');
+    } else {
+        card.style.display = 'none';
+    }
+}
+
+function renderLog(){
+    const el = document.getElementById('event-log');
+    el.innerHTML = G.log.slice(0,12).map(e=>
+        `<div class="log-entry"><span class="lt">An ${e.turn}</span><span class="ltext">${e.text}</span></div>`
+    ).join('');
+}
+
+function renderTurnBar(){
+    const bar = document.getElementById('turn-bar');
+    bar.innerHTML = '';
+    for(let i=1;i<=G.maxTurns;i++){
+        const d = document.createElement('div');
+        d.className = 'turn-pip' + (i<G.turn?' done':i===G.turn?' current':'');
+        bar.appendChild(d);
+    }
+    document.getElementById('turn-indicator').textContent = `Année ${G.turn} / ${G.maxTurns}`;
+    document.getElementById('header-name').textContent    = `La Maison de ${G.name}`;
+}
+
+function updateAllianceCd(){
+    const cd = document.getElementById('alliance-cd');
+    const btn = document.getElementById('btn-alliance');
+    if(G.allianceCd > 0){
+        cd.textContent  = `Alliance disponible dans ${G.allianceCd} tour(s)`;
+        btn.disabled = true;
+        btn.querySelector('.cd-badge') || btn.insertAdjacentHTML('beforeend',`<span class="cd-badge" id="cd-badge">⏳${G.allianceCd}</span>`);
+        const badge = btn.querySelector('.cd-badge');
+        if(badge) badge.textContent = `⏳${G.allianceCd}`;
+    } else {
+        cd.textContent = '';
+        btn.disabled = false;
+        const badge = btn.querySelector('.cd-badge');
+        if(badge) badge.remove();
+    }
+}
+
+function updateActionBtns(){
+    document.getElementById('btn-raid').disabled    = G.gold < 20;
+    document.getElementById('btn-fortify').disabled = G.gold < 30;
+    document.getElementById('btn-educate').disabled = G.gold < 10 || G.heirs.length === 0;
+    updateAllianceCd();
+}
+
+function setPhase(ph){
+    G.phase = ph;
+    document.getElementById('phase-label').textContent = ph==='action' ? 'Action' : 'Événement';
+    document.getElementById('actions-panel').style.display = ph==='action' ? 'block' : 'none';
+    const ec = document.getElementById('event-card');
+    ec.style.display = ph==='event' ? 'block' : 'none';
+    ec.classList.toggle('show', ph==='event');
+}
+
+function toast(msg){
+    const el = document.getElementById('flash');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(()=>el.classList.remove('show'), 2400);
+}
+
+// ========================
+// FLUX DE JEU
+// ========================
+
+function startGame(){
+    const raw  = document.getElementById('ruler-name').value.trim();
+    const name = raw || 'Anonyme';
+    newGame(name);
+
+    document.getElementById('start-screen').classList.remove('active');
+    const gs = document.getElementById('game-screen');
+    gs.style.display = 'block';
+    gs.classList.add('active');
+
+    beginTurn();
+}
+
+function beginTurn(){
+    const {bonus} = passives();
+
+    // Revenus automatiques + bonus passifs
+    const dGold     = 15 + (bonus.gold     ||0);
+    const dPrestige =  1 + (bonus.prestige ||0);
+    const dArmy     =      (bonus.army     ||0);
+    const dPiety    =      (bonus.piety    ||0);
+
+    G.gold     += dGold;
+    G.prestige += dPrestige;
+    G.army     += dArmy;
+    G.piety    += dPiety;
+
+    // Vieillissement des héritiers
+    G.heirs.forEach(h => h.age++);
+
+    // Décrémenter cooldown alliance
+    if(G.allianceCd > 0) G.allianceCd--;
+
+    // Afficher bannière de revenus
+    const parts = [`+${dGold} 💰`, `+${dPrestige} 👑`];
+    if(dArmy  >0) parts.push(`+${dArmy} ⚔️`);
+    if(dPiety >0) parts.push(`+${dPiety} ✝️`);
+    const banner = document.getElementById('income-banner');
+    banner.textContent = `Revenus de l'année : ${parts.join(', ')}`;
+    banner.classList.add('show');
+
+    // Mettre à jour le bouton "suivant" selon si c'est le dernier tour
+    document.getElementById('btn-next').textContent =
+        G.turn >= G.maxTurns ? '⚜ Terminer le règne' : '▶  Passer à l\'année suivante';
+
+    renderTurnBar();
+    renderStats(null);
+    updateActionBtns();
+    setPhase('action');
+
+    // Cacher bannière revenus après action (laissée visible pendant la phase action)
+}
+
+function doAction(type){
+    if(G.phase !== 'action') return;
+
+    const prev = {...G, heirs:[...G.heirs]};
+    let logMsg = '';
+
+    switch(type){
+        case 'raid':{
+            if(G.gold < 20){ toast('Pas assez d\'or pour un raid !'); return; }
+            G.gold -= 20;
+            let loot = rnd(30, 80);
+            if(hasSpecial('raid_bonus')) loot = Math.floor(loot*1.2);
+            G.gold     += loot;
+            G.prestige += 5;
+            const lostArmy = Math.random()<0.4;
+            if(lostArmy) G.army = Math.max(0, G.army-10);
+            logMsg = `⚔️ Raid : +${loot} 💰, +5 👑${lostArmy?' −10 ⚔️':''}`;
+            break;
+        }
+        case 'fortify':{
+            if(G.gold < 30){ toast('Pas assez d\'or pour fortifier !'); return; }
+            G.gold     -= 30;
+            G.army     += 20;
+            G.prestige +=  3;
+            logMsg = '🏰 Fortification : −30 💰, +20 ⚔️, +3 👑';
+            break;
+        }
+        case 'alliance':{
+            if(G.allianceCd > 0){ toast('Alliance en rechargement !'); return; }
+            let pGain = 15;
+            if(hasSpecial('alliance_bonus')) pGain += 10;
+            G.prestige   += pGain;
+            G.piety      += 5;
+            G.allianceCd  = 3;
+            logMsg = `🤝 Alliance : +${pGain} 👑, +5 ✝️`;
+            break;
+        }
+        case 'educate':{
+            if(G.gold < 10)       { toast('Pas assez d\'or !'); return; }
+            if(!G.heirs.length)   { toast('Aucun héritier à éduquer !'); return; }
+            G.gold -= 10;
+            // Choisir l'héritier avec le moins de traits
+            const heir = G.heirs.reduce((a,b) => a.traits.length <= b.traits.length ? a : b);
+            const avail = TRAIT_KEYS.filter(t => !heir.traits.includes(t));
+            if(avail.length){
+                const nt = avail[Math.floor(Math.random()*avail.length)];
+                heir.traits.push(nt);
+                logMsg = `📖 ${heir.name} acquiert : ${TRAITS[nt].label} ${TRAITS[nt].icon}`;
+            } else {
+                logMsg = `📖 ${heir.name} maîtrise déjà tous les traits.`;
+            }
+            break;
+        }
+        case 'tax':{
+            G.gold     += 40;
+            G.prestige  = Math.max(0, G.prestige-5);
+            logMsg = '💰 Impôts levés : +40 💰, −5 👑';
+            break;
+        }
+    }
+
+    addLog(logMsg);
+    renderStats(prev);
+    document.getElementById('income-banner').classList.remove('show');
+
+    // Transition vers la phase événement
+    document.getElementById('actions-panel').style.display = 'none';
+    setTimeout(triggerEvent, 250);
+}
+
+function triggerEvent(){
+    const ev = EVENTS[Math.floor(Math.random()*EVENTS.length)];
+    G.curEvent = ev;
+
+    document.getElementById('ev-title').textContent = ev.title;
+    document.getElementById('ev-desc').textContent  = ev.desc;
+
+    const autoEl    = document.getElementById('ev-auto');
+    const choicesEl = document.getElementById('ev-choices');
+    const nextBtn   = document.getElementById('btn-next');
+
+    autoEl.classList.remove('show');
+    choicesEl.innerHTML = '';
+    nextBtn.classList.remove('show');
+
+    setPhase('event');
+
+    if(ev.auto){
+        const prev = {...G, heirs:[...G.heirs]};
+        const result = ev.apply(G);
+        addLog(`📜 ${ev.title} → ${result}`);
+        renderStats(prev);
+        autoEl.textContent = result;
+        autoEl.classList.add('show');
+        nextBtn.classList.add('show');
+    } else {
+        choicesEl.innerHTML = ev.choices.map((c,i)=>`
+            <button class="choice-btn" id="ch-${i}" onclick="resolveChoice(${i})">
+                <span class="ctitle">${c.label}</span>
+                <span class="ceffect">${c.effect}</span>
+            </button>
+        `).join('');
+    }
+}
+
+function resolveChoice(idx){
+    const ev     = G.curEvent;
+    const choice = ev.choices[idx];
+    const prev   = {...G, heirs:[...G.heirs]};
+
+    const result = choice.apply(G);
+    addLog(`📜 ${ev.title} → ${choice.label} : ${result}`);
+    renderStats(prev);
+
+    // Désactiver les boutons de choix
+    document.querySelectorAll('.choice-btn').forEach(b=>b.disabled=true);
+
+    const autoEl = document.getElementById('ev-auto');
+    autoEl.textContent = result;
+    autoEl.classList.add('show');
+
+    document.getElementById('btn-next').classList.add('show');
+}
+
+function nextTurn(){
+    if(G.turn >= G.maxTurns){ endGame(); return; }
+    G.turn++;
+    document.getElementById('btn-next').classList.remove('show');
+    document.getElementById('event-card').style.display = 'none';
+    beginTurn();
+}
+
+function endGame(){
+    const score = calcScore();
+    const rank  = RANKS.find(r => score >= r.min) || RANKS[RANKS.length-1];
+
+    document.getElementById('game-screen').style.display = 'none';
+    document.getElementById('game-screen').classList.remove('active');
+
+    const es = document.getElementById('end-screen');
+    es.style.display = 'flex';
+    es.classList.add('active');
+
+    document.getElementById('end-ruler').textContent = `Le règne de ${G.name}`;
+    document.getElementById('end-score').textContent  = score;
+    document.getElementById('rank-title').textContent = rank.title;
+    document.getElementById('rank-desc').textContent  = rank.desc;
+
+    // Score détaillé
+    document.getElementById('score-grid').innerHTML = `
+        <div class="score-item"><span>👑 Prestige</span>  <span>${G.prestige}</span></div>
+        <div class="score-item"><span>✝️ Piété</span>     <span>${G.piety}</span></div>
+        <div class="score-item"><span>💰 Or ÷ 10</span>   <span>${Math.floor(G.gold/10)}</span></div>
+        <div class="score-item"><span>⚔️ Armée ÷ 5</span> <span>${Math.floor(G.army/5)}</span></div>
+        <div class="score-item"><span>👶 Héritiers × 15</span><span>${G.heirs.length*15}</span></div>
+        <div class="score-item" style="background:rgba(201,168,76,0.1);border:1px solid #6b5420;">
+            <span style="color:#c9a84c;">Total</span>
+            <span style="color:#c9a84c;font-weight:bold;">${score}</span>
+        </div>
+    `;
+
+    // 5 derniers événements
+    document.getElementById('end-log-ul').innerHTML =
+        G.log.slice(0,5).map(e=>`<li><span>An ${e.turn} — </span>${e.text}</li>`).join('');
+}
+
+function restartGame(){
+    document.getElementById('end-screen').style.display  = 'none';
+    document.getElementById('end-screen').classList.remove('active');
+    document.getElementById('ruler-name').value = '';
+
+    const ss = document.getElementById('start-screen');
+    ss.style.display = 'flex';
+    ss.classList.add('active');
+}
+
+// Initialisation : cacher les écrans non-actifs
+document.getElementById('game-screen').style.display = 'none';
+document.getElementById('end-screen').style.display  = 'none';
+</script>
+</body>
+</html>
