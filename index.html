@@ -2,8 +2,15 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Wall Street Survivor — Jeu de Bourse</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#06080f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WS Survivor">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="description" content="Jeu de bourse : investissez, empruntez à la banque, travaillez pour éviter la faillite !">
 <style>
   :root {
     --bg: #06080f;
@@ -1155,6 +1162,11 @@ render();
 
 // Auto-resize SVG chart on window resize
 window.addEventListener('resize', renderNWChart);
+
+// PWA service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
