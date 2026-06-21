@@ -129,6 +129,63 @@
             transform: translateY(-1px);
         }
 
+        /* Duration selector */
+        .duration-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.45rem;
+            margin-top: 0.5rem;
+            margin-bottom: 1.4rem;
+        }
+        .dur-btn {
+            background: rgba(20,12,2,0.7);
+            border: 1px solid #3a2808;
+            border-radius: 4px;
+            padding: 0.6rem 0.5rem;
+            color: #8a6f40;
+            font-family: Georgia, serif;
+            font-size: 0.82rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            line-height: 1.3;
+        }
+        .dur-btn:hover  { border-color: #c9a84c; color: #e8d5a3; }
+        .dur-btn.active {
+            border-color: #c9a84c;
+            background: rgba(201,168,76,0.12);
+            color: #e8d5a3;
+        }
+        .dur-btn small { color: #5a4410; font-size: 0.72rem; display:block; }
+        .dur-btn.active small { color: #8a6f40; }
+
+        /* Succession notification */
+        .succession-banner {
+            background: rgba(60,40,10,0.95);
+            border: 1px solid #c9a84c;
+            border-radius: 5px;
+            padding: 1rem 1.2rem;
+            margin-bottom: 0.9rem;
+            display: none;
+        }
+        .succession-banner.show { display: block; }
+        .succ-title { color: #c9a84c; font-size: 1rem; font-weight: bold; margin-bottom: 0.35rem; }
+        .succ-body  { color: #a08050; font-size: 0.85rem; line-height: 1.5; }
+
+        /* Fin de règne button (mode illimité) */
+        .btn-end-reign {
+            background: transparent;
+            border: 1px solid #3a2010;
+            border-radius: 4px;
+            padding: 0.35rem 0.8rem;
+            color: #5a4020;
+            font-family: Georgia, serif;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-end-reign:hover { border-color: #c9a84c; color: #c9a84c; }
+
         .start-rules {
             margin-top: 1.8rem;
             text-align: left;
@@ -686,13 +743,22 @@
         <label for="ruler-name">Votre nom, Seigneur :</label>
         <input type="text" id="ruler-name" placeholder="ex : Aldric le Vaillant" maxlength="28"
                onkeydown="if(event.key==='Enter') startGame()">
+
+        <label>Durée de la partie :</label>
+        <div class="duration-grid">
+            <button class="dur-btn" onclick="selectDur(20,this)">⚡ 20 ans<small>Partie rapide</small></button>
+            <button class="dur-btn" onclick="selectDur(50,this)">⚔️ 50 ans<small>Standard</small></button>
+            <button class="dur-btn" onclick="selectDur(100,this)">👑 100 ans<small>Épopée</small></button>
+            <button class="dur-btn active" onclick="selectDur(0,this)">∞ Illimité<small>Multi-générations</small></button>
+        </div>
+
         <button class="btn-primary" onclick="startGame()">⚔️ &nbsp;Commencer le règne</button>
         <ul class="start-rules">
-            <li>Gérez votre domaine pendant 20 tours (années)</li>
-            <li>Chaque tour : revenus automatiques, puis une action au choix</li>
-            <li>Un événement aléatoire clôt chaque année</li>
+            <li>Chaque tour : revenus auto, une action, puis un événement</li>
+            <li>En mode illimité : votre seigneur vieillit et mourra — un héritier lui succède</li>
             <li>Éduquez vos héritiers pour débloquer des bonus passifs</li>
-            <li>Maximisez votre Puissance Dynastique avant la fin</li>
+            <li>Conquérez les voisins pour en faire des vassaux (+or/tour)</li>
+            <li>Maximisez votre Puissance Dynastique</li>
         </ul>
     </div>
 </div>
@@ -703,9 +769,13 @@
 <div id="game-screen" class="screen">
     <!-- Header -->
     <div class="game-header">
-        <div class="dynasty-name" id="header-name">La Maison des ???</div>
-        <div class="turn-indicator" id="turn-indicator">Année 1 / 20</div>
+        <div class="dynasty-name" id="header-dynasty">La Maison des ???</div>
+        <div id="header-ruler" style="color:#a08050; font-size:0.88rem; font-style:italic; margin-top:0.15rem;"></div>
+        <div class="turn-indicator" id="turn-indicator">Année 1</div>
         <div class="turn-bar" id="turn-bar"></div>
+        <button class="btn-end-reign" id="btn-end-reign" style="display:none; margin-top:0.5rem;" onclick="endGame()">
+            ⚜ Mettre fin à la dynastiee
+        </button>
     </div>
 
     <div class="game-layout">
@@ -761,6 +831,12 @@
 
         <!-- RIGHT: Actions + Events + Log -->
         <div class="right-panel">
+            <!-- Succession banner -->
+            <div class="succession-banner" id="succ-banner">
+                <div class="succ-title" id="succ-title"></div>
+                <div class="succ-body"  id="succ-body"></div>
+            </div>
+
             <!-- Income banner -->
             <div class="income-banner" id="income-banner"></div>
 
@@ -1027,15 +1103,26 @@ const RANKS = [
 // ÉTAT DU JEU
 // ========================
 
-let G = {}; // game state global
+let G = {};
+let selectedDuration = 0; // 0 = illimité
+
+function selectDur(d, btn){
+    selectedDuration = d;
+    document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
 
 function newGame(rulerName) {
     G = {
-        name: rulerName,
+        dynastyName: rulerName,      // nom de la maison (constant)
+        name:        rulerName,      // prénom du seigneur actuel
+        rulerAge:    rnd(25, 38),    // âge du seigneur actuel
+        generation:  1,              // génération actuelle
         gold: 100, army: 50, prestige: 10, piety: 10,
         heirs: [],
         neighbors: [],
-        turn: 1, maxTurns: 20,
+        turn: 1,
+        maxTurns: selectedDuration,  // 0 = illimité
         allianceCd: 0,
         log: [],
         phase: 'action',
@@ -1090,7 +1177,8 @@ function generateNeighbors(){
 
 function calcScore(){
     const vassals = G.neighbors ? G.neighbors.filter(n=>n.vassal).length : 0;
-    return Math.floor(G.prestige + G.piety + G.gold/10 + G.army/5 + G.heirs.length*15 + vassals*20);
+    const genBonus = (G.generation - 1) * 10;
+    return Math.floor(G.prestige + G.piety + G.gold/10 + G.army/5 + G.heirs.length*15 + vassals*20 + genBonus);
 }
 
 function addLog(text){
@@ -1166,13 +1254,25 @@ function renderLog(){
 function renderTurnBar(){
     const bar = document.getElementById('turn-bar');
     bar.innerHTML = '';
-    for(let i=1;i<=G.maxTurns;i++){
-        const d = document.createElement('div');
-        d.className = 'turn-pip' + (i<G.turn?' done':i===G.turn?' current':'');
-        bar.appendChild(d);
+
+    if(G.maxTurns > 0){
+        // Mode limité : barre de pips
+        for(let i=1;i<=G.maxTurns;i++){
+            const d = document.createElement('div');
+            d.className = 'turn-pip' + (i<G.turn?' done':i===G.turn?' current':'');
+            bar.appendChild(d);
+        }
+        document.getElementById('turn-indicator').textContent = `Année ${G.turn} / ${G.maxTurns}`;
+    } else {
+        // Mode illimité : juste le compteur de tour + génération
+        document.getElementById('turn-indicator').textContent =
+            `Année ${G.turn}${G.generation>1?' — Génération '+G.generation:''}`;
+        document.getElementById('btn-end-reign').style.display = 'inline-block';
     }
-    document.getElementById('turn-indicator').textContent = `Année ${G.turn} / ${G.maxTurns}`;
-    document.getElementById('header-name').textContent    = `La Maison de ${G.name}`;
+
+    document.getElementById('header-dynasty').textContent = `La Maison de ${G.dynastyName}`;
+    document.getElementById('header-ruler').textContent   =
+        `${G.name}, ${G.rulerAge} ans${G.generation>1?' (Gén. '+G.generation+')':''}`;
 }
 
 function updateAllianceCd(){
@@ -1248,8 +1348,20 @@ function beginTurn(){
     G.army     += dArmy;
     G.piety    += dPiety;
 
-    // Vieillissement des héritiers
+    // Vieillissement du seigneur + héritiers
+    G.rulerAge++;
     G.heirs.forEach(h => h.age++);
+
+    // Vérifier mort naturelle (mode illimité uniquement)
+    if(G.maxTurns === 0){
+        let deathChance = 0;
+        if     (G.rulerAge >= 80) deathChance = 0.30;
+        else if(G.rulerAge >= 70) deathChance = 0.15;
+        else if(G.rulerAge >= 60) deathChance = 0.06;
+        if(deathChance > 0 && Math.random() < deathChance){
+            rulerDies(); return; // succession gère la suite
+        }
+    }
 
     // Croissance des armées voisines (sauf vassaux)
     G.neighbors.forEach(n => {
@@ -1273,9 +1385,10 @@ function beginTurn(){
     banner.textContent = `Revenus de l'année : ${parts.join(', ')}`;
     banner.classList.add('show');
 
-    // Mettre à jour le bouton "suivant" selon si c'est le dernier tour
+    // Mettre à jour le bouton "suivant"
+    const isLast = G.maxTurns > 0 && G.turn >= G.maxTurns;
     document.getElementById('btn-next').textContent =
-        G.turn >= G.maxTurns ? '⚜ Terminer le règne' : '▶  Passer à l\'année suivante';
+        isLast ? '⧜ Terminer le règne' : '▶  Passer à l\'année suivante';
 
     renderTurnBar();
     renderStats(null);
@@ -1513,11 +1626,56 @@ function renderNeighbors(){
 }
 
 function nextTurn(){
-    if(G.turn >= G.maxTurns){ endGame(); return; }
+    const isLimited = G.maxTurns > 0;
+    if(isLimited && G.turn >= G.maxTurns){ endGame(); return; }
     G.turn++;
     document.getElementById('btn-next').classList.remove('show');
     document.getElementById('event-card').style.display = 'none';
     beginTurn();
+}
+
+// ========================
+// MORT & SUCCESSION
+// ========================
+
+function rulerDies(){
+    const oldName = G.name;
+    const oldAge  = G.rulerAge;
+
+    document.getElementById('btn-next').classList.remove('show');
+    document.getElementById('event-card').style.display = 'none';
+    document.getElementById('income-banner').classList.remove('show');
+
+    if(G.heirs.length === 0){
+        addLog('💀 ' + oldName + ' est mort à ' + oldAge + ' ans sans héritier. La lignée s\'éteint.');
+        renderTurnBar(); renderStats(null);
+        setTimeout(endGame, 800);
+        return;
+    }
+
+    // Meilleur héritier : plus de traits, sinon le plus âgé
+    G.heirs.sort((a,b) => b.traits.length - a.traits.length || b.age - a.age);
+    const heir = G.heirs.shift();
+
+    G.name     = heir.name;
+    G.rulerAge = heir.age;
+    G.generation++;
+
+    // Bonus de succession selon traits
+    heir.traits.forEach(tk => { const t = TRAITS[tk]; if(t.stat) G[t.stat] += 5; });
+
+    addLog('👑 ' + oldName + ' est mort à ' + oldAge + ' ans. ' + heir.name + ' monte sur le trône ! (Génération ' + G.generation + ')');
+
+    const sb = document.getElementById('succ-banner');
+    document.getElementById('succ-title').textContent = '💀 ' + oldName + ' est mort — Succession !';
+    document.getElementById('succ-body').textContent  =
+        heir.name + ', ' + heir.age + ' ans, prend le trône. ' +
+        (heir.traits.length ? 'Ses traits (' + heir.traits.map(t=>TRAITS[t].label).join(', ') + ') lui confèrent un avantage.' : '');
+    sb.classList.add('show');
+    setTimeout(() => sb.classList.remove('show'), 6000);
+
+    G.turn++;
+    renderTurnBar(); renderStats(null); updateActionBtns(); setPhase('action');
 }
 
 function endGame(){
@@ -1538,6 +1696,7 @@ function endGame(){
 
     // Score détaillé
     const vassalsFinal = G.neighbors.filter(n=>n.vassal).length;
+    const genBonus = (G.generation - 1) * 10;
     document.getElementById('score-grid').innerHTML = `
         <div class="score-item"><span>👑 Prestige</span>    <span>${G.prestige}</span></div>
         <div class="score-item"><span>✝️ Piété</span>       <span>${G.piety}</span></div>
@@ -1545,8 +1704,9 @@ function endGame(){
         <div class="score-item"><span>⚔️ Armée ÷ 5</span>   <span>${Math.floor(G.army/5)}</span></div>
         <div class="score-item"><span>👶 Héritiers × 15</span><span>${G.heirs.length*15}</span></div>
         <div class="score-item"><span>🏰 Vassaux × 20</span> <span>${vassalsFinal*20}</span></div>
+        ${G.generation > 1 ? `<div class="score-item"><span>👑 Générations × 10</span><span>${genBonus}</span></div>` : ''}
         <div class="score-item" style="background:rgba(201,168,76,0.1);border:1px solid #6b5420;grid-column:span 2;">
-            <span style="color:#c9a84c;">Total</span>
+            <span style="color:#c9a84c;">Total — ${G.generation} génération(s), An ${G.turn}</span>
             <span style="color:#c9a84c;font-weight:bold;">${score}</span>
         </div>
     `;
