@@ -373,11 +373,106 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #1e2a4a; border-radius: 2px; }
 
+  /* === TAB BAR MOBILE === */
+  #tab-bar {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #0d1120;
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .tab-bar-inner { display: flex; }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 4px 8px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    text-align: center;
+    transition: color .2s;
+    font-size: .62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-btn .tab-icon { display: block; font-size: 1.4rem; margin-bottom: 2px; }
+  .tab-btn.active { color: #60a5fa; }
+  .tab-btn.active .tab-icon { transform: scale(1.1); }
+
   /* === RESPONSIVE === */
   @media (max-width: 768px) {
+    /* Header compact */
+    #header { padding: 10px 14px; flex-wrap: wrap; gap: 6px; }
+    #header h1 { font-size: 1rem; }
+    .hstats { gap: 8px; }
+    .hstat .label { font-size: .55rem; }
+    .hstat .value { font-size: .85rem; }
+    /* Hide less important stats on mobile */
+    .hstat.hide-mobile { display: none; }
+
+    /* Layout */
     #main { grid-template-columns: 1fr; height: auto; }
-    #right { border-left: none; border-top: 1px solid var(--border); }
-    .hstats { gap: 12px; }
+    #left { padding: 10px; gap: 10px; padding-bottom: 80px; }
+    #right { border-left: none; border-top: none; padding: 10px; gap: 10px; padding-bottom: 80px; display: none; }
+    #right.tab-active { display: flex; }
+    #left.tab-active { display: flex; }
+    #left:not(.tab-active) { display: none; }
+
+    /* Sections hidden by default, shown by tab */
+    .mobile-tab-section { display: none; }
+    .mobile-tab-section.active { display: block; }
+
+    /* Tab bar visible */
+    #tab-bar { display: block; }
+
+    /* Bigger touch targets */
+    .btn-action { padding: 13px 20px; font-size: .9rem; }
+    .btn-mini   { padding: 8px 14px; font-size: .8rem; }
+    .action-btn { padding: 18px 10px; }
+    .action-btn .ab-icon { font-size: 2rem; }
+    .action-btn .ab-title { font-size: .9rem; }
+
+    /* Stock table mobile */
+    .stock-table th:nth-child(4),
+    .stock-table td:nth-child(4) { display: none; } /* hide sparkline */
+    .stock-table th:nth-child(5),
+    .stock-table td:nth-child(5) { display: none; } /* hide qty col */
+    .stock-table th, .stock-table td { padding: 10px 8px; }
+    .stock-name { font-size: .9rem; }
+    .stock-price { font-size: 1rem; }
+    .stock-change { font-size: .82rem; }
+
+    /* Loan inputs */
+    .qty-input { width: 90px; padding: 8px 10px; font-size: .9rem; }
+
+    /* Panels */
+    .panel-header { font-size: .7rem; padding: 10px 14px; }
+    .panel-body { padding: 12px; }
+
+    /* Event log */
+    #event-log { max-height: 100px; }
+    .event-item { font-size: .8rem; }
+
+    /* NW chart taller on mobile */
+    #nw-chart { height: 80px; }
+
+    /* Holdings */
+    .holding-row { font-size: .85rem; }
+    .h-detail { font-size: .72rem; }
+
+    /* Bank rows */
+    .bank-row { font-size: .87rem; }
+    .bank-label { font-size: .82rem; }
+
+    /* Ticker smaller */
+    #ticker-inner { font-size: .68rem; }
+
+    /* Trade row wrap nicely */
+    .trade-row { gap: 8px; }
   }
 
   .flash-green { animation: flashGreen .6s; }
@@ -405,11 +500,11 @@
       <div class="label">Liquidités</div>
       <div class="value" id="h-cash">—</div>
     </div>
-    <div class="hstat">
+    <div class="hstat hide-mobile">
       <div class="label">Portefeuille</div>
       <div class="value" id="h-portfolio">—</div>
     </div>
-    <div class="hstat">
+    <div class="hstat hide-mobile">
       <div class="label">Dette</div>
       <div class="value" id="h-debt">—</div>
     </div>
@@ -609,6 +704,24 @@
   </div><!-- /right -->
 
 </div><!-- /main -->
+
+<!-- TAB BAR MOBILE -->
+<div id="tab-bar">
+  <div class="tab-bar-inner">
+    <button class="tab-btn active" onclick="switchTab('bourse')" id="tab-bourse">
+      <span class="tab-icon">📊</span>Bourse
+    </button>
+    <button class="tab-btn" onclick="switchTab('portefeuille')" id="tab-portefeuille">
+      <span class="tab-icon">💼</span>Portef.
+    </button>
+    <button class="tab-btn" onclick="switchTab('banque')" id="tab-banque">
+      <span class="tab-icon">🏦</span>Banque
+    </button>
+    <button class="tab-btn" onclick="switchTab('jouer')" id="tab-jouer">
+      <span class="tab-icon">🎮</span>Jouer
+    </button>
+  </div>
+</div>
 
 <!-- MODAL FIN DE PARTIE -->
 <div id="modal-overlay">
@@ -1167,6 +1280,59 @@ window.addEventListener('resize', renderNWChart);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+
+// ============================================================
+//  MOBILE TAB NAVIGATION
+// ============================================================
+const TAB_PANELS = {
+  bourse:       ['event-panel', 'stock-panel', 'trade-panel', 'nw-panel'],
+  portefeuille: ['portfolio-panel'],
+  banque:       ['banque-panel'],
+  jouer:        ['actions-panel', 'objectif-panel'],
+};
+
+let currentTab = 'bourse';
+
+function switchTab(tab) {
+  if (window.innerWidth > 768) return;
+  currentTab = tab;
+
+  // Update tab buttons
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  // Show/hide panels in #left and #right
+  const allPanels = document.querySelectorAll('.panel[id]');
+  allPanels.forEach(p => {
+    const visible = Object.values(TAB_PANELS).flat().includes(p.id);
+    if (!visible) return;
+    const inTab = (TAB_PANELS[tab] || []).includes(p.id);
+    p.style.display = inTab ? '' : 'none';
+  });
+}
+
+function assignPanelIds() {
+  // Bourse tab
+  const panels = document.querySelectorAll('.panel');
+  const ids = [
+    'event-panel', 'stock-panel', 'trade-panel', 'nw-panel',  // left
+    'actions-panel', 'objectif-panel', 'portfolio-panel', 'banque-panel', // right
+  ];
+  panels.forEach((p, i) => { if (ids[i]) p.id = ids[i]; });
+}
+
+function applyMobilePanels() {
+  if (window.innerWidth > 768) {
+    // Desktop: show all
+    document.querySelectorAll('.panel[id]').forEach(p => p.style.display = '');
+    return;
+  }
+  switchTab(currentTab);
+}
+
+assignPanelIds();
+applyMobilePanels();
+window.addEventListener('resize', applyMobilePanels);
 </script>
 </body>
 </html>
